@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script defer src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<title>Gold Price Calculator &mdash; No Screenshot</title>
+<style>
+  :root{ --bg:#ffffff; --card:#ffffff; --line:#e5e7eb; --muted:#4b5563; --fg:#111827; --gold:#C59B0B; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Inter,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:#111827}
+  .wrap{max-width:700px;margin:0 auto;padding:18px}
+  h1{font-size:clamp(20px,4vw,32px);margin:0 0 12px;text-align:center;color:var(--gold);font-weight:800;letter-spacing:1px}
+  .stamp{font-size:13px;color:#374151;text-align:center;margin:0 0 14px}
+  .card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:16px;box-shadow:0 6px 18px rgba(0,0,0,.06)}
+  label{display:block;margin-top:12px;color:#4b5563;font-size:12px}
+  .field{position:relative}
+  .field input{width:100%;padding:12px;border-radius:10px;border:1px solid #d1d5db;background:#fff;color:#111827;font-size:16px;text-align:right;padding-right:60px}
+  .field input[readonly]{background:#f9fafb}
+  .field input:focus{outline:none;border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.25)}
+  .suffix{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#6b7280;font-size:12px;pointer-events:none}
+  .row{display:grid;grid-template-columns:1fr;gap:10px}
+  .btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;margin-top:12px}
+  .btn{appearance:none;border:1px solid #d1d5db;background:linear-gradient(135deg,#facc15,#f59e0b);color:#000;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
+  #printNotice{font-size:12px;color:#b91c1c;margin-top:4px;display:none}
+  #actionMessage{font-size:12px;color:#047857;margin-top:6px;display:none}
+  body.capture-desktop .wrap,
+  .capture-desktop .wrap{width:700px!important;max-width:700px!important;margin:0 auto;}
+  body.capture-desktop .btns,
+  .capture-desktop .btns{flex-direction:row!important;align-items:center!important;}
+  body.capture-desktop .btn,
+  .capture-desktop .btn{width:auto!important;text-align:center!important;}
+  @media (max-width:600px){
+    .btns{flex-direction:column;align-items:stretch;justify-content:center;gap:10px;}
+    .btn{width:100%;text-align:center;}
+  }</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Gold Price Calculator</h1>
+    <div class="stamp">&#x1F4C5; <span id="timestamp">&mdash;</span></div>
+    <div id="priceCard" class="card">
+      <div class="row">
+        <div>
+          <label>LME Price per Ounce (USD)</label>
+          <div class="field"><input id="lme" type="number" step="0.01" inputmode="decimal" value="0"><span class="suffix">USD</span></div>
+        </div>
+        <div>
+          <label>Exchange Rate (GHS/USD)</label>
+          <div class="field"><input id="rate" type="number" step="0.0001" inputmode="decimal" value="0"><span class="suffix">GHS/USD</span></div>
+        </div>
+        <div>
+          <label>Price per pound</label>
+          <div class="field"><input id="poundPrice" type="text" readonly value="0"><span class="suffix">GHS</span></div>
+        </div>
+        <div>
+          <label>Bonus</label>
+          <div class="field"><input id="bonus" type="text" readonly value="832"><span class="suffix">GHS</span></div>
+        </div>
+        <div>
+          <label style="font-weight:900;letter-spacing:.5px">TOTAL</label>
+          <div class="field"><input id="finalTotal" type="text" readonly value="0" style="font-weight:900;font-size:22px;color:#7c2d12"><span class="suffix" style="font-weight:900;color:#7c2d12">GHS</span></div>
+        </div>
+      </div>
+      <div class="btns">
+        <button class="btn" id="reset">Reset</button>
+        <button class="btn" id="share">Share / Copy Link</button>
+        <button class="btn" id="copyText">Copy Text</button>
+        <button class="btn" id="copyScreenshot">Copy Screenshot</button>
+      </div>
+      <p id="printNotice">Copy failed. Try again or capture it manually.</p>
+      <p id="actionMessage" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+
+  <!-- Share fallback modal -->
+  <div class="modal" id="modal" style="position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:16px">
+    <div class="box" style="background:#fff;border-radius:12px;max-width:560px;width:100%;padding:16px;border:1px solid #e5e7eb;box-shadow:0 10px 28px rgba(0,0,0,.2)">
+      <h3 style="margin:0 0 8px;color:#111827">Copy this link</h3>
+      <textarea id="linkBox" readonly style="width:100%;height:90px;border:1px solid #d1d5db;border-radius:8px;padding:10px;font-size:14px"></textarea>
+      <div class="actions" style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+        <button id="copyBtn" style="padding:8px 12px;border-radius:8px;border:1px solid #d1d5db;background:#f3f4f6;cursor:pointer">Copy</button>
+        <button id="closeBtn" style="padding:8px 12px;border-radius:8px;border:1px solid #d1d5db;background:#f3f4f6;cursor:pointer">Close</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const ADJ=0.95865, GRAMS_PER_OZ=31.1035, GRAMS_PER_GHP=7.75;
+  const CAPTURE_WIDTH=700;
+  function round2(x){return Math.round(x*100)/100;} function round0(x){return Math.round(x);} function round4(x){return Math.round(x*10000)/10000;}
+
+  function pad2(n){return n<10?'0'+n:''+n;} function ordinal(n){const s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
+  function stampString(d){const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];const months=['January','February','March','April','May','June','July','August','September','October','November','December'];const h=d.getHours(),m=pad2(d.getMinutes());const ampm=h===0?'12':(h>12?(h-12):h);const suffix=h>=12?'pm':'am';return `${days[d.getDay()]}, ${ordinal(d.getDate())} ${months[d.getMonth()]} ${d.getFullYear()} @ ${ampm}:${m}${suffix}.`;}
+  function updateClock(){ $('timestamp').textContent = stampString(new Date()); }
+
+  function fmtMoney(x){return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');}
+  let messageTimer;
+  function showMessage(text,type='success'){
+    const el=$('actionMessage');
+    if(!el)return;
+    const colors={success:'#047857',info:'#1d4ed8',error:'#b91c1c'};
+    el.textContent=text;
+    el.style.color=colors[type]||colors.success;
+    el.style.display='block';
+    clearTimeout(messageTimer);
+    messageTimer=setTimeout(()=>{el.style.display='none';},4000);
+  }
+  function hideMessage(){
+    const el=$('actionMessage');
+    if(!el)return;
+    el.style.display='none';
+    clearTimeout(messageTimer);
+    messageTimer=undefined;
+  }
+
+  function cloneWithFormValues(source){
+    const clone=source.cloneNode(true);
+    const srcFields=source.querySelectorAll('input,textarea,select');
+    const cloneFields=clone.querySelectorAll('input,textarea,select');
+    srcFields.forEach((field,idx)=>{
+      const cloneField=cloneFields[idx];
+      if(!cloneField)return;
+      if(field.type==='checkbox'||field.type==='radio'){
+        cloneField.checked=field.checked;
+      }else{
+        cloneField.value=field.value;
+      }
+    });
+    return clone;
+  }
+
+  function createCaptureSandbox(target,width){
+    const sandbox=document.createElement('div');
+    sandbox.className='capture-desktop';
+    sandbox.style.position='fixed';
+    sandbox.style.pointerEvents='none';
+    sandbox.style.overflow='hidden';
+    sandbox.style.top='-20000px';
+    sandbox.style.left='-20000px';
+    sandbox.style.width=`${width}px`;
+    sandbox.style.maxWidth=`${width}px`;
+    const clone=cloneWithFormValues(target);
+    sandbox.appendChild(clone);
+    document.body.appendChild(sandbox);
+    return {
+      node:clone,
+      cleanup:()=>{document.body.removeChild(sandbox);}
+    };
+  }
+
+
+  function calc(){
+    const lme=parseFloat($('lme').value), rate=parseFloat($('rate').value), bonus=parseFloat($('bonus').value);
+    const ok=isFinite(lme)&&isFinite(rate)&&lme!==0&&rate!==0;
+    if(!ok){ $('poundPrice').value='0'; $('finalTotal').value='0'; return; }
+    const ghs=round2(lme*rate), adjG=round2(ghs*ADJ), price=round0(adjG*(GRAMS_PER_GHP/GRAMS_PER_OZ)), total=round0(price+bonus);
+    $('poundPrice').value=fmtMoney(price); $('finalTotal').value=fmtMoney(total);
+  }
+
+  ['lme','rate'].forEach(id=>{const el=$(id); el.addEventListener('focus',()=>{if(el.value==='0')el.value='';}); el.addEventListener('blur',()=>{if(el.value==='')el.value='0';calc();}); el.addEventListener('input',calc);});
+  $('reset').addEventListener('click',()=>{$('lme').value='0';$('rate').value='0';calc();});
+
+  function buildLink(){const p=new URLSearchParams({lme:$('lme').value,rate:$('rate').value});return location.origin+location.pathname+'?'+p.toString();}
+  $('share').addEventListener('click',async()=>{
+    const url=buildLink();
+    try{
+      if(navigator.share){
+        await navigator.share({title:'Gold Price Calculator',url});
+        showMessage('Share dialog opened.','info');
+        return;
+      }
+    }catch(e){}
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      try{
+        await navigator.clipboard.writeText(url);
+        showMessage('Link copied to clipboard.');
+        return;
+      }catch(err){}
+    }
+    const modal=$('modal');
+    const box=$('linkBox');
+    box.value=url;
+    modal.style.display='flex';
+    box.focus();
+    box.select();
+    showMessage('Copy the link below.','info');
+  });
+  $('copyBtn').addEventListener('click',()=>{
+    const box=$('linkBox');
+    box.select();
+    try{
+      const ok=document.execCommand('copy');
+      if(ok){
+        showMessage('Link copied to clipboard.');
+      }else{
+        throw new Error('Copy command rejected');
+      }
+    }catch(e){
+      showMessage('Copy failed. Use Ctrl+C or Cmd+C.','error');
+    }
+  });
+  $('closeBtn').addEventListener('click',()=>{$('modal').style.display='none';hideMessage();});
+
+  $('copyText').addEventListener('click',async()=>{
+    const now=stampString(new Date()); const lme=parseFloat($('lme').value)||0; const rate=parseFloat($('rate').value)||0; const price=$('poundPrice').value||'0'; const bonus=$('bonus').value||'0'; const total=$('finalTotal').value||'0';
+    const text=`Gold Price 
+${now}
+
+LME (per ounce)- $${fmtMoney(round2(lme))}
+
+Interbank Rate ${rate}
+
+Price per pound- GHS${price}
+
+Special Bonus  per pound- GHS${bonus}
+
+*Total price per pound- GHS${total}*`;
+    try{
+      await navigator.clipboard.writeText(text);
+      showMessage('Details copied to clipboard.');
+    }catch(e){
+      const tmp=document.createElement('textarea');
+      tmp.value=text;
+      tmp.setAttribute('readonly','');
+      tmp.style.position='absolute';
+      tmp.style.left='-9999px';
+      document.body.appendChild(tmp);
+      tmp.select();
+      try{
+        const ok=document.execCommand('copy');
+        if(ok){
+          showMessage('Details copied to clipboard.');
+        }else{
+          throw new Error('Copy command rejected');
+        }
+      }catch(e2){
+        showMessage('Copy failed. Select and copy the text manually.','error');
+      }
+      document.body.removeChild(tmp);
+    }
+  });
+
+  async function copyScreenshot(){
+    const notice=$('printNotice');
+    hideMessage();
+    if(notice){
+      notice.style.display='none';
+      notice.textContent='';
+    }
+
+    const target=document.querySelector('.wrap');
+    if(!target){
+      showMessage('Calculator not found.','error');
+      return;
+    }
+
+    if(typeof html2canvas!=='function'){
+      if(notice){
+        notice.textContent='Screenshot tool failed to load. Reload the page and try again.';
+        notice.style.display='block';
+      }
+      showMessage('Screenshot unavailable.','error');
+      return;
+    }
+
+    const sandbox=createCaptureSandbox(target,CAPTURE_WIDTH);
+    try{
+      const captureWidth=Math.max(sandbox.node.scrollWidth,CAPTURE_WIDTH);
+      const captureHeight=sandbox.node.scrollHeight;
+      const canvas=await html2canvas(sandbox.node,{
+        backgroundColor:'#ffffff',
+        scale:Math.min((window.devicePixelRatio||1)*1.5,4),
+        useCORS:true,
+        width:captureWidth,
+        height:captureHeight,
+        windowWidth:Math.max(captureWidth,document.documentElement.clientWidth),
+        windowHeight:Math.max(captureHeight,document.documentElement.clientHeight),
+        scrollX:0,
+        scrollY:0
+      });
+      const blob=await new Promise((resolve,reject)=>{
+        canvas.toBlob(b=>{
+          if(b){resolve(b);}else{reject(new Error('Clipboard image unavailable'));}
+        },'image/png',1);
+      });
+      const clipboardReady=navigator.clipboard&&typeof navigator.clipboard.write==='function'&&typeof window.ClipboardItem!=='undefined';
+      if(clipboardReady){
+        try{
+          await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);
+          showMessage('Screenshot copied to clipboard.','success');
+          return;
+        }catch(copyErr){
+          console.warn('Clipboard copy failed',copyErr);
+        }
+      }
+      const downloadUrl=URL.createObjectURL(blob);
+      const fallbackLink=document.createElement('a');
+      const timestamp=new Date().toISOString().replace(/[:.]/g,'-');
+      fallbackLink.href=downloadUrl;
+      fallbackLink.download=`gold-price-calculator-${timestamp}.png`;
+      document.body.appendChild(fallbackLink);
+      fallbackLink.click();
+      document.body.removeChild(fallbackLink);
+      URL.revokeObjectURL(downloadUrl);
+      showMessage('Clipboard unavailable. Screenshot downloaded instead.','info');
+    }catch(err){
+      console.error(err);
+      if(notice){
+        notice.textContent='Copy failed. Try again or capture it manually.';
+        notice.style.display='block';
+      }
+      showMessage('Copy failed.','error');
+    }finally{
+      sandbox.cleanup();
+    }
+  }
+
+  $('copyScreenshot').addEventListener('click',copyScreenshot); 
+
+  updateClock(); setInterval(updateClock,1000);
+  (function(){const q=new URLSearchParams(location.search); if(q.has('lme'))$('lme').value=q.get('lme'); if(q.has('rate'))$('rate').value=q.get('rate');})();
+  calc();
+</script>
+</body>
+</html>
