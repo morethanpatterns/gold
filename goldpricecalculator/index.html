@@ -89,6 +89,7 @@
   const $ = id => document.getElementById(id);
   const ADJ=0.95865, GRAMS_PER_OZ=31.1035, GRAMS_PER_GHP=7.75;
   const CAPTURE_WIDTH=700;
+  const SHARE_BASE_URL='https://morethanpatterns.github.io/gold/goldpricecalculator/index.html';
   function round2(x){return Math.round(x*100)/100;} function round0(x){return Math.round(x);} function round4(x){return Math.round(x*10000)/10000;}
 
   function pad2(n){return n<10?'0'+n:''+n;} function ordinal(n){const s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
@@ -162,7 +163,7 @@
   ['lme','rate'].forEach(id=>{const el=$(id); el.addEventListener('focus',()=>{if(el.value==='0')el.value='';}); el.addEventListener('blur',()=>{if(el.value==='')el.value='0';calc();}); el.addEventListener('input',calc);});
   $('reset').addEventListener('click',()=>{$('lme').value='0';$('rate').value='0';calc();});
 
-  function buildLink(){const p=new URLSearchParams({lme:$('lme').value,rate:$('rate').value});return location.origin+location.pathname+'?'+p.toString();}
+  function buildLink(){const p=new URLSearchParams({lme:$('lme').value,rate:$('rate').value});return SHARE_BASE_URL+'?'+p.toString();}
   $('share').addEventListener('click',async()=>{
     const url=buildLink();
     try{

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script defer src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<title>Gold Amount Calculator â€” Vertical (Accounting Clean)</title>
+<title>Gold Amount Calculator &mdash; Vertical (Accounting Clean)</title>
 <style>
   :root{ --bg:#ffffff; --card:#ffffff; --line:#e5e7eb; --muted:#4b5563; --fg:#111827; --gold:#C59B0B; }
   *{box-sizing:border-box}
@@ -82,6 +82,7 @@
 <script>
   const $ = id => document.getElementById(id);
   const CAPTURE_WIDTH=620;
+  const SHARE_BASE_URL='https://morethanpatterns.github.io/gold/goldamountcalculator/index.html';
   function trunc2(x){ return Math.trunc(x*100)/100; }
   function trunc0(x){ return Math.trunc(x); }
 
@@ -182,7 +183,7 @@
 
   $('reset').addEventListener('click', () => { $('top').value='0'; $('down').value='0'; $('price').value='0'; calc(); });
 
-  function buildLink(){ const p=new URLSearchParams({ top:$('top').value, down:$('down').value, price:$('price').value }); return location.origin+location.pathname+'?'+p.toString(); }
+  function buildLink(){ const p=new URLSearchParams({ top:$('top').value, down:$('down').value, price:$('price').value }); return SHARE_BASE_URL+'?'+p.toString(); }
   $('share').addEventListener('click', async ()=>{
     hideMessage();
     const url = buildLink();
